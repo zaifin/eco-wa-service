@@ -7,336 +7,176 @@
 
 
 \## Overview
+# Multi-Service E-Commerce Integration Platform
 
-This platform enables a full e-commerce experience inside WhatsApp using the \*\*WhatsApp Business API\*\* and the \*\*Saleor\*\* GraphQL backend.  
-
-It follows a \*\*microservices architecture\*\* for modularity, scalability, and ease of deployment.
-
-
+This project implements a **microservices-based architecture** for integrating **WhatsApp Business API**, **Saleor E-Commerce**, **Payment Gateway**, and **Notification System**.  
+It is designed for **scalability**, **extensibility**, and **cloud deployment** (tested with [Render](https://render.com)).
 
 ---
 
+## 📌 High-Level Architecture
 
+![High Level Architecture](architecture/high_level_architecture.png)
 
-\## Architecture
-
-
-
-&nbsp;        ┌───────────────────┐
-
-&nbsp;        │  WhatsApp User    │
-
-&nbsp;        └───────┬───────────┘
-
-&nbsp;                │
-
-&nbsp;                ▼
-
-&nbsp;       ┌───────────────────────┐
-
-&nbsp;       │ whatsapp-service       │
-
-&nbsp;       │ (Webhook/API handler)  │
-
-&nbsp;       └───────┬────────────────┘
-
-&nbsp;                │
-
-&nbsp;                ▼
-
-&nbsp;       ┌───────────────────────┐
-
-&nbsp;       │ conversation-service   │
-
-&nbsp;       │ (Session + chatbot)    │
-
-&nbsp;       └───────┬────────────────┘
-
-&nbsp;   ┌───────────┼────────────────┐
-
-&nbsp;   ▼           ▼                ▼
-
-
-
-saleor-adapter payment-service notification-service
-
-(GraphQL+cache) (Payments) (Order updates)
-
-│
-
-▼
-
-Saleor Backend
-
-
-
-
+The architecture consists of several microservices communicating over HTTP (REST) and messaging (RabbitMQ).  
+Key components:
+- **WhatsApp Service** — Handles incoming/outgoing messages via WhatsApp Business API.
+- **Conversation Service** — Manages chatbot logic and order conversation flows.
+- **Saleor Adapter Service** — Integrates with Saleor GraphQL API for product, order, and customer management.
+- **Payment Service** — Manages payment requests and status updates.
+- **Notification Service** — Sends transactional notifications via various channels (e.g., email, push).
+- **Redis** — Caching layer.
+- **PostgreSQL** — Central database for persistent data.
 
 ---
 
+## 📜 Service Overviews
 
+### 1. **WhatsApp Service**
+- Receives webhooks from Meta’s WhatsApp API.
+- Validates webhook tokens.
+- Sends and receives messages.
+- Passes conversation context to the Conversation Service.
 
-\## Services
-
-
-
-\### 1. `whatsapp-service`
-
-\- \*\*Role:\*\* Entry point for WhatsApp API callbacks (inbound messages) and outbound messages.
-
-\- \*\*Key Responsibilities:\*\*
-
-&nbsp; - Verify webhook requests from Meta using `WH\_VERIFY\_TOKEN`.
-
-&nbsp; - Parse incoming messages and send them to `conversation-service`.
-
-&nbsp; - Send outbound messages to customers using the WhatsApp Business Cloud API.
-
-\- \*\*Tech stack:\*\* Spring Boot WebFlux / RestTemplate (for API calls).
-
-\- \*\*Ports:\*\* 8080
-
-
+![Message Flow](architecture/message_flow.png)
 
 ---
 
+### 2. **Conversation Service**
+- Orchestrates chat flows.
+- Calls Saleor Adapter for product/order details.
+- Manages session data in Redis.
 
-
-\### 2. `conversation-service`
-
-\- \*\*Role:\*\* Orchestrates chatbot flows and manages user sessions.
-
-\- \*\*Key Responsibilities:\*\*
-
-&nbsp; - State management (current step in ordering process).
-
-&nbsp; - Communicating with `saleor-adapter` to fetch products.
-
-&nbsp; - Calling `payment-service` when checkout is triggered.
-
-&nbsp; - Sending final status updates to `notification-service`.
-
-\- \*\*Tech stack:\*\* Spring Boot + Redis (optional for session store).
-
-\- \*\*Ports:\*\* 8081
-
-
+![Conversation Flow](architecture/conversation_flow.png)
 
 ---
 
+### 3. **Saleor Adapter Service**
+- Connects to Saleor's GraphQL API.
+- Retrieves product catalog, stock status, and order history.
+- Creates new orders when confirmed by the Conversation Service.
 
-
-\### 3. `saleor-adapter-service`
-
-\- \*\*Role:\*\* Interface between internal microservices and Saleor GraphQL API.
-
-\- \*\*Key Responsibilities:\*\*
-
-&nbsp; - Optimized GraphQL queries to fetch products, categories, orders.
-
-&nbsp; - Optional caching with Redis for faster product search.
-
-&nbsp; - Abstracting Saleor's schema from other services.
-
-\- \*\*Tech stack:\*\* Spring Boot WebFlux (GraphQL client), Redis.
-
-\- \*\*Ports:\*\* 8082
-
-
+![Order Placement Flow](architecture/order_placement_flow.png)
 
 ---
 
+### 4. **Payment Service**
+- Creates payment links.
+- Handles payment gateway callbacks.
+- Updates Saleor when payment is confirmed.
 
-
-\### 4. `payment-service`
-
-\- \*\*Role:\*\* Handles payment link generation and status verification.
-
-\- \*\*Key Responsibilities:\*\*
-
-&nbsp; - Integrating with payment gateways (Stripe, Razorpay, etc.).
-
-&nbsp; - Generating payment links and sending them back via `conversation-service`.
-
-&nbsp; - Verifying payment completion and notifying order system.
-
-\- \*\*Tech stack:\*\* Spring Boot REST client.
-
-\- \*\*Ports:\*\* 8083
-
-
+![Payment Confirmation Flow](architecture/payment_confirmation_flow.png)
 
 ---
 
+### 5. **Notification Service**
+- Sends confirmation messages (email, push, WhatsApp).
+- Alerts users about shipping, delivery, or payment status.
 
-
-\### 5. `notification-service`
-
-\- \*\*Role:\*\* Sends order updates and tracking information to users via WhatsApp.
-
-\- \*\*Key Responsibilities:\*\*
-
-&nbsp; - Sending order confirmation, shipment updates, delivery notifications.
-
-&nbsp; - Scheduling follow-up messages if needed.
-
-\- \*\*Tech stack:\*\* Spring Boot REST client.
-
-\- \*\*Ports:\*\* 8084
-
-
+![Order Notification Flow](architecture/order_notification_flow.png)
 
 ---
 
+### 6. **Data & Caching Layer**
+- **PostgreSQL**: Persistent storage for order and transaction data.
+- **Redis**: Used for caching frequently accessed data and conversation states.
 
-
-\## How Services Communicate
-
-
-
-\- All inter-service communication is \*\*HTTP REST\*\* over internal Docker network.
-
-\- Example:
-
-&nbsp; - `whatsapp-service` receives incoming message → sends POST request to `conversation-service`.
-
-&nbsp; - `conversation-service` calls `saleor-adapter-service` for product data.
-
-&nbsp; - `conversation-service` calls `payment-service` for payment links.
-
-&nbsp; - `notification-service` sends outbound WhatsApp messages for updates.
-
-
+![Data Storage & Caching Flow](architecture/data_storage_caching_flow.png)
 
 ---
 
+## 🚀 Deployment
+
+### Local Development
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/your-org/microservices-ecommerce.git
+   cd microservices-ecommerce
 
 
-\## Local Development
+### Start services with Docker Compose
 
+2. Clone the repository (if you haven't already):
+   ```bash
+   git clone https://github.com/your-org/microservices-ecommerce.git
+   cd microservices-ecommerce
 
+3. Build and bring up all services:
 
-\### Prerequisites
-
-\- Java 17+
-
-\- Maven 3.8+
-
-\- Docker \& Docker Compose
-
-\- WhatsApp Business API credentials from Meta
-
-\- Saleor backend running (local or cloud)
-
-\- (Optional) Redis for caching/session store
-
-
-
-\### Running with Docker Compose
-
-```bash
-
+# Build images and start containers in the foreground
 docker-compose up --build
 
+# Or run in the background (detached)
+docker-compose up --build -d
 
 
-This will start:
+Verify services are running (example local ports):
 
+WhatsApp Service → http://localhost:8080
 
+Conversation Service → http://localhost:8081
 
-All 5 microservices
+Saleor Adapter Service → http://localhost:8082
 
+Payment Service → http://localhost:8083
 
+Notification Service → http://localhost:8084
 
-Redis (optional)
+Configure environment variables
+You can define these either in:
 
+docker-compose.yml → environment: section
 
+A .env file in the project root (Docker Compose will auto-load it)
 
-Saleor backend (if configured locally)
+Required variables:
 
 
+DATABASE_URL=jdbc:postgresql://localhost:5432/saleor_pnou
+DATABASE_USERNAME=saleor
+DATABASE_PASSWORD=yourpassword
+WH_VERIFY_TOKEN=your_verify_token
+WHATSAPP_API_TOKEN=EAA...
+REDIS_HOST=redis
+REDIS_PORT=6379
+PAYMENT_GATEWAY_KEY=...
 
 
+View logs and service health
 
+All logs (foreground run): printed directly in terminal
 
+Specific service logs:
 
-cd whatsapp-service
 
-mvn spring-boot:run
+View logs and service health
 
+All logs (foreground run): printed directly in terminal
 
+Specific service logs:
 
+Health checks:
 
+If using Spring Boot Actuator: /actuator/health
 
-You can run each service independently if pointing to the correct service URLs in application.yml.
+Or a custom /health endpoint
 
+Common troubleshooting
 
+Port conflicts → Stop processes using that port (lsof -i :8080) or update docker-compose.yml ports
 
-Environment Variables
+Database errors → Ensure Postgres container is up and healthy:
 
-Variable	Description	Example
+docker-compose ps
+docker-compose logs postgres
 
-WH\_VERIFY\_TOKEN	Token to verify WhatsApp webhook	my\_verify\_token
+Missing environment variables → Verify .env file or docker-compose.yml has all required vars
 
-WHATSAPP\_API\_TOKEN	Meta API token for sending messages	EAAB...
 
-SALEOR\_API\_URL	URL of Saleor GraphQL endpoint	https://saleor.example.com/graphql/
+Stop and clean up
 
-PAYMENT\_GATEWAY\_KEY	Payment gateway API key	
+# Stop services
+docker-compose down
 
-REDIS\_HOST	Redis hostname	redis
-
-REDIS\_PORT	Redis port	6379
-
-DATABASE\_URL	PostgreSQL connection string	postgresql://user:pass@host/dbname
-
-
-
-
-
-Deploying to Render
-
-Create a Render service for each microservice.
-
-
-
-Set environment variables for each service in Render dashboard.
-
-
-
-Render automatically sets:
-
-
-
-RENDER\_GIT\_BRANCH → Git branch deployed
-
-
-
-RENDER\_GIT\_COMMIT → Commit hash deployed
-
-
-
-Use Docker-based deploy for consistent builds.
-
-
-
-Enhancing the System
-
-Add AI Chatbot: Integrate OpenAI or Rasa into conversation-service.
-
-
-
-Add Inventory Sync: Extend saleor-adapter-service to update stock from Saleor to WhatsApp catalog.
-
-
-
-Payment Webhooks: Add webhook listener in payment-service for instant payment updates.
-
-
-
-Multi-language support: Store user’s language preference in conversation-service.
-
-
-
-
-
+# Stop and remove volumes (⚠ deletes all local data)
+docker-compose down -v
