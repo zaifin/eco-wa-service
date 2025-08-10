@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+services:
+  whatsapp:
+    url: ${WHATSAPP_SERVICE_URL:http://whatsapp:8080}
+  conversation:
+    url: ${CONVERSATION_SERVICE_URL:http://conversation:8081}
+  saleorAdapter:
+    url: ${SALEOR_ADAPTER_SERVICE_URL:http://saleor-adapter:8082}
+  payment:
+    url: ${PAYMENT_SERVICE_URL:http://payment:8083}
+  notification:
+    url: ${NOTIFICATION_SERVICE_URL:http://notification:8084}
+
+meta:
+  webhook-verify-token: ${WH_VERIFY_TOKEN:default_verify_token}
+
+spring:
+  application:
+    name: whatsapp-service
