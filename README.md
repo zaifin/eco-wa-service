@@ -85,95 +85,42 @@ Key components:
 
 ---
 
-## 🚀 Deployment
-
-### Local Development
-1. Clone the repository:
+## Local Development
+### Clone the repository:
    ```bash
    git clone https://github.com/your-org/microservices-ecommerce.git
    cd microservices-ecommerce
 
 
-### Start services with Docker Compose
-
-2. Clone the repository (if you haven't already):
-   ```bash
-   git clone https://github.com/your-org/microservices-ecommerce.git
-   cd microservices-ecommerce
-
-3. Build and bring up all services:
-
-# Build images and start containers in the foreground
+###  Build images and start containers in the foreground
 docker-compose up --build
 
-# Or run in the background (detached)
-docker-compose up --build -d
 
 
-Verify services are running (example local ports):
+### Verify services are running (example local ports):
 
 WhatsApp Service → http://localhost:8080
-
 Conversation Service → http://localhost:8081
-
 Saleor Adapter Service → http://localhost:8082
-
 Payment Service → http://localhost:8083
-
 Notification Service → http://localhost:8084
 
-Configure environment variables
-You can define these either in:
-
-docker-compose.yml → environment: section
-
-A .env file in the project root (Docker Compose will auto-load it)
+### Configure environment variables
 
 Required variables:
-
 
 DATABASE_URL=jdbc:postgresql://localhost:5432/saleor_pnou
 DATABASE_USERNAME=saleor
 DATABASE_PASSWORD=yourpassword
-WH_VERIFY_TOKEN=your_verify_token
-WHATSAPP_API_TOKEN=EAA...
-REDIS_HOST=redis
-REDIS_PORT=6379
-PAYMENT_GATEWAY_KEY=...
+WH_VERIFY_TOKEN=
+WHATSAPP_API_TOKEN=
+REDIS_HOST=
+REDIS_PORT=
+PAYMENT_GATEWAY_KEY=
 
 
-View logs and service health
 
-All logs (foreground run): printed directly in terminal
-
-Specific service logs:
-
-
-View logs and service health
-
-All logs (foreground run): printed directly in terminal
-
-Specific service logs:
-
-Health checks:
-
-If using Spring Boot Actuator: /actuator/health
-
-Or a custom /health endpoint
-
-Common troubleshooting
-
-Port conflicts → Stop processes using that port (lsof -i :8080) or update docker-compose.yml ports
-
-Database errors → Ensure Postgres container is up and healthy:
-
-docker-compose ps
-docker-compose logs postgres
-
-Missing environment variables → Verify .env file or docker-compose.yml has all required vars
-
-
-Stop and clean up
+### Stop and clean up
 
 # Stop services
 docker-compose down
